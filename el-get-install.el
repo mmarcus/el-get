@@ -29,7 +29,7 @@
 	 (pdir              (file-name-as-directory (concat el-get-root package)))
 	 (git               (or (executable-find "git")
 				(error "Unable to find `git'")))
-	 (url               "git://github.com/dimitri/el-get.git")
+	 (url               "git://github.com/mmarcus/el-get.git")
 	 (default-directory el-get-root)
 	 (process-connection-type nil) ; pipe, no pty (--no-progress)
 
