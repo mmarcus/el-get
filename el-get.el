@@ -1813,10 +1813,12 @@ recursion.
 	 (comp   (plist-get source :compile))
 	 (clist  (if (listp comp) comp (list comp)))
 	 (nocomp (and (plist-member source :compile) (not comp)))
+         (el-get-code (symbol-file 'el-get-byte-compile 'defun))
 	 (bytecmdargs
-	  (format "-Q -batch -l %s -f el-get-byte-compile-batch %s %s %S"
-		  (file-name-sans-extension (symbol-file 'el-get-byte-compile 'defun))
-		  package nocomp (prin1-to-string clist)))
+          (mapcar 'shell-quote-argument
+                  (list "-Q" "-batch" "-l" (concat (file-name-sans-extension el-get-code) ".el")
+                        "-f" "el-get-byte-compile-batch" package 
+                        (prin1-to-string nocomp) (prin1-to-string clist))))
 	 (default-directory (file-name-as-directory wdir)))
 
     ;; first build the Info dir
@@ -1827,8 +1829,7 @@ recursion.
 	(progn
 	  ;; first byte-compile the package, with another "clean" emacs process
           (when el-get-byte-compile
-            (let ((build-cmd (format "%s %s" el-get-emacs bytecmdargs)))
-              (message "%S" (shell-command-to-string build-cmd))))
+            (apply #'call-process-shell-command el-get-emacs nil buf t bytecmdargs))
 
 	  (dolist (c commands)
             (let ((cmd
@@ -1867,7 +1868,7 @@ recursion.
                                          :default-directory ,wdir
                                          :shell t
                                          :program ,el-get-emacs
-                                         :args ,(split-string bytecmdargs)
+                                         :args ,bytecmdargs
                                          :message ,(format "el-get-build %s: byte-compile ok." package)
                                          :error ,(format
                                                   "el-get could not byte-compile %s" package))))
@@ -1985,8 +1986,7 @@ entry."
 (defun el-get-read-package-with-status (action &rest status)
   "Read a package name in given status"
   (completing-read (format "%s package: " action)
-		   (el-get-list-package-names-with-status status)))
-
+                   (apply 'el-get-list-package-names-with-status status)))
 
 (defun el-get-count-package-with-status (&rest status)
   "Return how many packages are currently in given status"
@@ -2198,8 +2198,7 @@ called by `el-get' (usually at startup) for each package in
 
     ;; If the package has been updated outside el-get, the .el files will be
     ;; out of date, so just check if we need to recompile them.
-    (when el-get-byte-compile
-      (el-get-byte-compile package))
+    (el-get-byte-compile package)
 
     ;; load any autoloads file if needed
     (loop for file in
